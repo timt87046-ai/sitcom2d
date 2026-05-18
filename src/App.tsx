@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
@@ -20,7 +20,9 @@ import {
   Type as TypeIcon,
   Monitor,
   Youtube,
-  ExternalLink
+  ExternalLink,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { generateScript, type Character, type GenerationResult } from './services/gemini';
 
@@ -33,9 +35,24 @@ export default function App() {
   const [topic, setTopic] = useState('Vợ chồng & Tình cảm');
   const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('9:16');
   const [duration, setDuration] = useState(2);
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('gemini_api_key') || 'AIzaSyC56xXkOhnG1Cz8wxkDfRFSpksr__0-_TM';
+    }
+    return 'AIzaSyC56xXkOhnG1Cz8wxkDfRFSpksr__0-_TM';
+  });
+  const [showKey, setShowKey] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  // Set global key for window access and save to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).customGeminiKey = apiKey;
+      localStorage.setItem('gemini_api_key', apiKey);
+    }
+  }, [apiKey]);
 
   const topics = [
     'Chuyện thầm kín',
@@ -451,7 +468,38 @@ export default function App() {
             className="max-w-3xl mx-auto px-6 pt-12 md:pt-20"
           >
             {/* Logo area */}
-            <div className="text-center mb-16 space-y-6">
+            <div className="relative text-center mb-16 space-y-6">
+              {/* API Key Input Section at top right */}
+              <div className="absolute -top-12 right-0 md:-top-16 flex flex-col items-end gap-1 z-50">
+                <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mr-2">Config Gemini API Key</span>
+                <div className="flex items-center gap-2 bg-white/90 backdrop-blur-sm p-1.5 px-2 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="relative flex items-center">
+                    <input 
+                      type={showKey ? "text" : "password"}
+                      placeholder="Nhập API Key..."
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      className="text-[10px] pl-3 pr-8 py-1.5 bg-gray-50 border border-gray-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-400 w-36 md:w-48 font-mono transition-all"
+                    />
+                    <button 
+                      onClick={() => setShowKey(!showKey)}
+                      className="absolute right-2 text-gray-400 hover:text-blue-500 transition-colors p-1"
+                      title={showKey ? "Ẩn Key" : "Hiện Key"}
+                    >
+                      {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <a 
+                    href="https://aistudio.google.com/app/apikey" 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="text-[10px] font-bold text-blue-500 hover:text-blue-600 hover:underline px-1 whitespace-nowrap"
+                  >
+                    Lấy Key
+                  </a>
+                </div>
+              </div>
+
               <motion.div 
                 whileHover={{ scale: 1.1, rotate: 5 }}
                 className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl mb-8 p-1 relative group"

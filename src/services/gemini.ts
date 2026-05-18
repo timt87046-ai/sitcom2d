@@ -1,7 +1,3 @@
-import { GoogleGenAI, Type } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export interface Character {
   name: string;
   appearance: string;
@@ -33,8 +29,6 @@ export async function generateScript(
   duration: number,
   topic: string = "Đời thường"
 ): Promise<GenerationResult> {
-  const model = "gemini-3-flash-preview"; // Use standard model alias to avoid 404 errors
-
   const systemInstruction = `You are a professional Creative Director and AI Prompt Engineer specializing in 2D Vector Animation.
 Your task is to transform diverse life situations into a highly detailed, scene-by-scene video script within ONE ABSOLUTELY FIXED CONSISTENT SETTING for the entire episode.
 
@@ -89,48 +83,32 @@ For each scene, provide:
 3. negativePrompt (English): Standard exclusion list (text, letters, watermark, signature, 3D rendering, photorealistic, blurred lines, realistic shadows, complex grain textures, microphones, animals, non-human features, distorted anatomy).
 `;
 
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          episodeTitle: { type: Type.STRING },
-          scenes: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                sceneNumber: { type: Type.INTEGER },
-                audioScript: { type: Type.STRING },
-                videoPrompt: { type: Type.STRING },
-                negativePrompt: { type: Type.STRING },
-              },
-              required: ["sceneNumber", "audioScript", "videoPrompt", "negativePrompt"],
-            },
-          },
-          characterReferences: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                referencePrompt: { type: Type.STRING },
-              },
-              required: ["name", "referencePrompt"],
-            },
-          },
-        },
-        required: ["episodeTitle", "scenes", "characterReferences"],
-      },
-    },
-  });
-
   try {
-    const parsed = JSON.parse(response.text) as GenerationResult;
+    const customKey = (window as any).customGeminiKey || "AIzaSyC56xXkOhnG1Cz8wxkDfRFSpksr__0-_TM";
+    
+    const apiResponse = await fetch("/api/generate-script", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        characters,
+        situation,
+        aspectRatio,
+        duration,
+        topic,
+        systemInstruction,
+        prompt,
+        customKey
+      }),
+    });
+
+    if (!apiResponse.ok) {
+      const errorData = await apiResponse.json();
+      throw new Error(errorData.error || "Failed to generate script via API");
+    }
+
+    const parsed = await apiResponse.json() as GenerationResult;
     
     // Override character references with fixed prompts as requested by user
     if (parsed.characterReferences) {
@@ -172,7 +150,7 @@ For each scene, provide:
     
     return parsed;
   } catch (e) {
-    console.error("Failed to parse Gemini response:", response.text);
+    console.error("Failed to parse Gemini response:", e);
     throw new Error("Invalid response format from AI");
   }
 }
